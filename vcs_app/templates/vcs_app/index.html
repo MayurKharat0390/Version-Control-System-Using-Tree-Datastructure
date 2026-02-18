@@ -92,7 +92,52 @@
         canvas {
             display: block;
         }
+
+        /* Mobile Responsive Styles */
+        @media (max-width: 768px) {
+            #app {
+                flex-direction: column;
+            }
+
+            #sidebar {
+                width: 100%;
+                height: 40vh;
+                /* Takes bottom 40% */
+                border-right: none;
+                border-top: 1px solid #333;
+                order: 2;
+                /* Move to bottom */
+                padding: 10px;
+                box-sizing: border-box;
+            }
+
+            #canvas-container {
+                width: 100%;
+                height: 60vh;
+                /* Takes top 60% */
+                order: 1;
+            }
+
+            .panel {
+                margin-bottom: 10px;
+                padding-bottom: 10px;
+            }
+
+            h2 {
+                font-size: 1em;
+            }
+
+            input,
+            select,
+            button {
+                padding: 10px;
+                /* Touch friendly */
+                font-size: 16px;
+                /* Prevent zoom on iOS */
+            }
+        }
     </style>
+
 </head>
 
 <body>
