@@ -11,6 +11,13 @@ def index(request):
     return render(request, 'vcs_app/index.html')
 
 @csrf_exempt
+def reset_repo(request):
+    if request.method == 'POST':
+        repo.reset()
+        return JsonResponse({'status': 'success', 'message': 'Tree erased successfully'})
+    return JsonResponse({'status': 'error', 'message': 'Invalid method'}, status=405)
+
+@csrf_exempt
 def create_commit(request):
     if request.method == 'POST':
         try:
@@ -19,7 +26,7 @@ def create_commit(request):
             commit = repo.create_commit(message)
             return JsonResponse({
                 'status': 'success',
-                'commit_id': commit.unique_id,
+                'commit_id': commit.id,
                 'message': commit.message,
                 'timestamp': commit.timestamp
             })
@@ -64,8 +71,55 @@ def checkout(request):
     return JsonResponse({'status': 'error', 'message': 'Invalid method'}, status=405)
 
 def get_log(request):
+    """Linear history from HEAD"""
     log = repo.get_log()
     return JsonResponse({'log': log})
+
+def get_full_history(request):
+    """Global history via DFS"""
+    log = repo.get_full_history_dfs()
+    return JsonResponse({'log': log})
+
+def get_bfs_levels(request):
+    """Level-wise view via BFS"""
+    levels = repo.get_level_view_bfs()
+    return JsonResponse({'levels': levels})
+
+@csrf_exempt
+def search_commit(request):
+    """DFS-based commit search"""
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        query = data.get('query')
+        node = repo.find_commit_dfs(query)
+        if node:
+            return JsonResponse({'status': 'success', 'commit': node.get_details()})
+        return JsonResponse({'status': 'error', 'message': 'Commit not found'}, status=404)
+    return JsonResponse({'status': 'error', 'message': 'Invalid method'}, status=405)
+
+@csrf_exempt
+def get_lca(request):
+    """Find LCA of two nodes"""
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        id1 = data.get('id1')
+        id2 = data.get('id2')
+        lca = repo.get_lca(id1, id2)
+        if lca:
+            return JsonResponse({'status': 'success', 'lca': lca})
+    return JsonResponse({'status': 'error', 'message': 'LCA not found'}, status=404)
+
+def get_node_analytics(request, commit_id):
+    """Metrics: Depth, Path to Root, and Subtree (DFS)"""
+    metrics = repo.get_node_metrics(commit_id)
+    subtree = repo.get_subtree(commit_id)
+    if metrics:
+        return JsonResponse({
+            'status': 'success',
+            'metrics': metrics,
+            'subtree': subtree
+        })
+    return JsonResponse({'status': 'error', 'message': 'Node not found'}, status=404)
 
 def get_tree_data(request):
     tree = repo.get_tree_data()

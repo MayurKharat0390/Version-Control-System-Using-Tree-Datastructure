@@ -66,6 +66,17 @@
             background: #0a9396;
         }
 
+        button.danger {
+            background: #780000;
+            border-color: #ff0000;
+            margin-top: 20px;
+        }
+
+        button.danger:hover {
+            background: #ff0000;
+            color: #fff;
+        }
+
         .log-entry {
             margin-bottom: 10px;
             padding: 8px;
@@ -92,12 +103,161 @@
         canvas {
             display: block;
         }
+
+        /* Mobile Responsive Styles */
+        @media (max-width: 768px) {
+            #app {
+                flex-direction: column;
+            }
+
+            #sidebar {
+                width: 100%;
+                height: 40vh;
+                /* Takes bottom 40% */
+                border-right: none;
+                border-top: 1px solid #333;
+                order: 2;
+                /* Move to bottom */
+                padding: 10px;
+                box-sizing: border-box;
+            }
+
+            #canvas-container {
+                width: 100%;
+                height: 60vh;
+                /* Takes top 60% */
+                order: 1;
+            }
+
+            .panel {
+                margin-bottom: 10px;
+                padding-bottom: 10px;
+            }
+
+            h2 {
+                font-size: 1em;
+            }
+
+            input,
+            select,
+            button {
+                padding: 10px;
+                /* Touch friendly */
+                font-size: 16px;
+                /* Prevent zoom on iOS */
+            }
+        }
+        #v-scroller {
+            position: fixed;
+            right: 0;
+            top: 0;
+            width: 15px;
+            height: 100%;
+            overflow-y: scroll;
+            overflow-x: hidden;
+            z-index: 10000;
+            background: rgba(15, 23, 42, 0.5);
+            border-left: 1px solid #334155;
+            backdrop-filter: blur(5px);
+        }
+
+        #v-content {
+            width: 1px;
+            height: 1000px; /* Dynamic */
+        }
+
+        /* Webkit (Chrome/Edge/Safari) */
+        #v-scroller::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #v-scroller::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        #v-scroller::-webkit-scrollbar-thumb {
+            background: #38bdf8;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+        }
+
+        #v-scroller::-webkit-scrollbar-thumb:hover {
+            background: #ffffff;
+        }
+
+        #depth-label {
+            position: fixed;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 10px;
+            letter-spacing: 3px;
+            color: #38bdf8;
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            pointer-events: none;
+            z-index: 10000;
+            opacity: 0.7;
+            text-transform: uppercase;
+        }
+        /* Highlights */
+        .highlight-path { border: 2px solid #facc15 !important; }
+        .highlight-subtree { background: rgba(56, 189, 248, 0.2) !important; }
+
+        .analysis-box {
+            background: #222;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            border-left: 2px solid #4af;
+        }
+
+        .search-container {
+            margin-bottom: 20px;
+        }
+
+        .search-container input {
+            border-color: #4af;
+            background: #0f172a;
+        }
+
+        .toggle-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .toggle-btn {
+            flex: 1;
+            font-size: 11px;
+            padding: 5px;
+            background: #1e293b;
+            color: #ccc;
+            border: 1px solid #334155;
+            cursor: pointer;
+        }
+
+        .toggle-btn.active {
+            background: #38bdf8;
+            color: #000;
+            border-color: #38bdf8;
+        }
     </style>
+
 </head>
 
 <body>
     <div id="app">
         <div id="sidebar">
+            <div class="panel">
+                <h2>Commit Search (DFS)</h2>
+                <div class="search-container">
+                    <input type="text" id="commit-search" placeholder="Search Message or ID...">
+                    <button onclick="searchCommit()">Search (DFS)</button>
+                </div>
+            </div>
+
             <div class="panel">
                 <h2>Controls</h2>
                 <input type="text" id="commit-msg" placeholder="Commit Message">
@@ -130,16 +290,37 @@
             <div class="panel">
                 <h2>Current State</h2>
                 <div id="status-display">Loading...</div>
+                <div id="analytics-display" class="analysis-box" style="display:none;">
+                    <strong>NODE ANALYSIS:</strong><br>
+                    <span id="analysis-depth"></span><br>
+                    <span id="analysis-height"></span><br>
+                    <div id="analysis-path" style="margin-top:5px; color:#aaa; font-size:0.9em;"></div>
+                </div>
+                <div style="display:flex; gap:5px;">
+                    <button id="lca-mode-btn" onclick="toggleLCAMode()" style="margin-top:10px; background:#4b5563; flex:1;">LCA Divergence</button>
+                    <button onclick="runBFSReport()" style="margin-top:10px; background:#4b5563; flex:1;">BFS Growth</button>
+                </div>
             </div>
 
             <div class="panel">
-                <h2>Commit Log</h2>
+                <h2>VCS History</h2>
+                <div class="toggle-container">
+                    <button id="mode-linear" class="toggle-btn active" onclick="setHistoryMode('linear')">LINEAR (Branch)</button>
+                    <button id="mode-full" class="toggle-btn" onclick="setHistoryMode('full')">FULL DFS (Repo)</button>
+                </div>
                 <div id="log-container">Loading...</div>
+                <button class="danger" onclick="eraseTree()">Erase All Tree Nodes</button>
             </div>
         </div>
 
         <div id="canvas-container"></div>
         <div id="tooltip"></div>
+    </div>
+
+    <!-- 🧠 SCROLLER MOVED OUTSIDE #APP FOR MAXIMUM VISIBILITY -->
+    <div id="depth-label">NAVIGATOR</div>
+    <div id="v-scroller">
+        <div id="v-content"></div>
     </div>
 
     <!-- Three.js from CDN -->
@@ -206,11 +387,59 @@
             }
         }
 
+        async function eraseTree() {
+            if (!confirm("Are you sure you want to PERMANENTLY erase all tree nodes and reset to root?")) return;
+            
+            const res = await fetch(`${API_BASE}/reset`, { method: 'POST' });
+            const data = await res.json();
+            if (data.status === 'success') {
+                alert("Tree structure reset to academic root.");
+                fetchStatus();
+                fetchLog();
+            } else {
+                alert(data.message);
+            }
+        }
+
+        async function runBFSReport() {
+            const res = await fetch(`${API_BASE}/levels`);
+            const data = await res.json();
+            let report = "BFS Level-wise Growth:\n";
+            Object.entries(data.levels).forEach(([lvl, commits]) => {
+                report += `Level ${lvl}: ${commits.length} commits (${commits.map(c => c.id).join(', ')})\n`;
+            });
+            alert(report);
+        }
+
+        let historyMode = 'linear';
+        function setHistoryMode(mode) {
+            historyMode = mode;
+            document.getElementById('mode-linear').classList.toggle('active', mode === 'linear');
+            document.getElementById('mode-full').classList.toggle('active', mode === 'full');
+            fetchLog();
+        }
+
+        async function searchCommit() {
+            const query = document.getElementById('commit-search').value;
+            if (!query) return;
+            const res = await fetch(`${API_BASE}/search`, {
+                method: 'POST', body: JSON.stringify({ query: query })
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                highlightCommit(data.commit.id);
+                // Optionally auto-center 3D view? We'll just highlight.
+            } else {
+                alert("BFS/DFS Search: Commit not found in history.");
+            }
+        }
+
         async function fetchLog() {
-            const res = await fetch(`${API_BASE}/log`);
+            const url = historyMode === 'linear' ? `${API_BASE}/log` : `${API_BASE}/full-history`;
+            const res = await fetch(url);
             const data = await res.json();
             const container = document.getElementById('log-container');
-            container.innerHTML = '';
+            container.innerHTML = historyMode === 'linear' ? '' : '<div style="margin-bottom:5px; font-size:10px; color:#4af;">DFS GLOBAL TRAVERSAL</div>';
 
             data.log.forEach(entry => {
                 const div = document.createElement('div');
@@ -247,6 +476,99 @@
 
             // Pass branch info for 3D visualization
             window.branchTips = data.status.branches;
+            window.treeHeight = data.status.tree_height;
+        }
+
+        let lcaSelection = [];
+        let lcaMode = false;
+
+        function toggleLCAMode() {
+            lcaMode = !lcaMode;
+            lcaSelection = [];
+            const btn = document.getElementById('lca-mode-btn');
+            btn.innerText = lcaMode ? "Select Two Nodes..." : "Find Divergence (LCA)";
+            btn.style.background = lcaMode ? "#0f0" : "#4b5563";
+            btn.style.color = lcaMode ? "#000" : "#fff";
+            if (!lcaMode) {
+                // Reset all emissive
+                Object.values(nodes).forEach(n => n.mesh.material.emissive.setHex(0x000000));
+            }
+        }
+
+        async function processNodeSelection(id) {
+            if (lcaMode) {
+                if (lcaSelection.length < 2) {
+                    lcaSelection.push(id);
+                    nodes[id].mesh.material.emissive.setHex(0xff00ff);
+                }
+                if (lcaSelection.length === 2) {
+                    const res = await fetch(`${API_BASE}/lca`, {
+                        method: 'POST', body: JSON.stringify({ id1: lcaSelection[0], id2: lcaSelection[1] })
+                    });
+                    const data = await res.json();
+                    if (data.status === 'success') {
+                        alert(`Lowest Common Ancestor (Divergence): ${data.lca.id} - "${data.lca.message}"`);
+                        highlightPathToRoot(data.lca.id);
+                    }
+                    toggleLCAMode();
+                }
+            } else {
+                fetchNodeAnalysis(id);
+            }
+        }
+
+        async function fetchNodeAnalysis(id) {
+            const res = await fetch(`${API_BASE}/node-analytics/${id}`);
+            const data = await res.json();
+            if (data.status === 'success') {
+                const box = document.getElementById('analytics-display');
+                box.style.display = 'block';
+                document.getElementById('analysis-depth').innerText = `Depth: ${data.metrics.depth}`;
+                document.getElementById('analysis-height').innerText = `Tree Height: ${window.treeHeight}`;
+                document.getElementById('analysis-path').innerText = `Lineage: ${data.metrics.path_to_root.join(' ← ')}`;
+                
+                highlightSubtreeAndPath(id, data.subtree, data.metrics.path_to_root);
+            }
+        }
+
+        function highlightCommit(id) {
+            if (!nodes[id]) return;
+            // Flash node
+            const originalColor = nodes[id].mesh.material.color.getHex();
+            nodes[id].mesh.material.color.setHex(0xffff00);
+            setTimeout(() => {
+                 nodes[id].mesh.material.color.setHex(originalColor);
+            }, 2000);
+            controls.target.copy(nodes[id].target);
+        }
+
+        function highlightSubtreeAndPath(rootId, subtreeIds, p2rIds) {
+            // Reset all
+            Object.values(nodes).forEach(n => {
+                n.mesh.material.emissive.setHex(0x000000);
+                n.mesh.scale.set(1,1,1);
+            });
+
+            // Path to Root (Yellow Glow)
+            p2rIds.forEach(id => {
+                if (nodes[id]) nodes[id].mesh.material.emissive.setHex(0x444400);
+            });
+
+            // Subtree (Blue Glow & Scale)
+            subtreeIds.forEach(id => {
+                if (nodes[id]) {
+                    nodes[id].mesh.material.emissive.setHex(0x002244);
+                    nodes[id].mesh.scale.set(1.2, 1.2, 1.2);
+                }
+            });
+            
+            // Selection (Purple)
+            if (nodes[rootId]) nodes[rootId].mesh.material.emissive.setHex(0xff00ff);
+        }
+
+        function highlightPathToRoot(id) {
+             // Simple highlight for LCA result
+             highlightCommit(id);
         }
 
         // --- 2. 3D Visualization ---
@@ -341,6 +663,16 @@
                 }
             });
 
+            container.addEventListener('click', (event) => {
+                 raycaster.setFromCamera(mouse, camera);
+                 const intersectables = Object.values(nodes).map(n => n.mesh);
+                 const intersects = raycaster.intersectObjects(intersectables);
+                 if (intersects.length > 0) {
+                     const id = intersects[0].object.userData.id;
+                     processNodeSelection(id);
+                 }
+            });
+
             animate();
             window.addEventListener('resize', () => {
                 camera.aspect = container.clientWidth / container.clientHeight;
@@ -350,50 +682,105 @@
         }
 
         function update3D(treeData, headId) {
-            // Keep track of existing IDs to avoid full reconstruct if possible
-            // For simplicity, we calculate target positions every time and animate to them
-
             const layout = {};
+            
+            // 🧠 Rule 4: Branch Direction Consistency
+            const branchDirections = {
+                "main": 0,
+                "feature": (120 * Math.PI) / 180, 
+                "hotfix": (240 * Math.PI) / 180   
+            };
 
-            // Radial-ish Layout
-            // y = time/depth (INVERTED: Grows downwards)
-            // x, z = spread based on branch
+            // Pre-calculate which nodes belong to which branch paths for visual biasing
+            const nodeBranchPaths = {};
+            if (window.branchTips) {
+                Object.entries(window.branchTips).forEach(([branchName, tipId]) => {
+                    let currentId = tipId;
+                    while (currentId) {
+                        if (!nodeBranchPaths[currentId]) nodeBranchPaths[currentId] = new Set();
+                        nodeBranchPaths[currentId].add(branchName);
+                        const nodeObj = findNode(treeData, currentId);
+                        currentId = nodeObj ? nodeObj.parentId : null;
+                    }
+                });
+            }
 
-            function calculatePositions(node, depth, angleStart, angleEnd) {
-                const y = depth * -3; // Grows DOWNWARDS
-                const angle = (angleStart + angleEnd) / 2;
-
-                // Radius increases with depth to allow more space
-                // But we want a tree look.
-                // Let's use a cone spread.
-
-                // If depth 0, x=0, z=0
-                // If depth > 0
-                const r = depth * 1.5; // Spread factor
-
-                let x = 0, z = 0;
-                if (depth > 0) {
-                    x = r * Math.cos(angle);
-                    z = r * Math.sin(angle);
+            // 🧠 Helper: Decide angle based on branch path or parental split
+            function getPreferredAngle(node, currentAngle) {
+                if (nodeBranchPaths[node.id]) {
+                    const branches = Array.from(nodeBranchPaths[node.id]);
+                    // Trunk nodes (shared with main) stay at direction 0 to act as a straight baseline
+                    if (branches.includes("main")) return branchDirections["main"];
+                    for (let b of branches) {
+                        if (branchDirections[b] !== undefined) return branchDirections[b];
+                    }
                 }
+                return currentAngle;
+            }
+
+            // 🧠 Recursive Layout: Cartesian mapping from Radial distribution
+            function calculatePositions(node, depth, parentAngle, sweepRange) {
+                // Rule 1: Vertical Spacing
+                const spacingY = 4;
+                const y = depth * -spacingY; 
+
+                // Rule 3: Radius increases with depth to avoid overlap
+                const radius = depth * 2.5; 
+
+                // Rule 4: Apply Consistent Branch Angle
+                const angle = getPreferredAngle(node, parentAngle);
+
+                // Polar to Cartesian conversion
+                const x = radius * Math.cos(angle);
+                const z = radius * Math.sin(angle);
 
                 layout[node.id] = new THREE.Vector3(x, y, z);
 
-                const childrenCount = node.children.length;
-                if (childrenCount > 0) {
-                    const angleStep = (angleEnd - angleStart) / childrenCount;
-                    // To prevent children from overlapping parent if angle sweep is too large,
-                    // we limit sweep? No, full circle is fine for root.
+                const children = node.children;
+                const k = children.length;
+                if (k === 0) return;
 
-                    node.children.forEach((child, i) => {
-                        const childStart = angleStart + (i * angleStep);
-                        const childEnd = childStart + angleStep;
-                        calculatePositions(child, depth + 1, childStart, childEnd);
+                // Rule 2 & 5: Child Distribution
+                if (k === 1) {
+                    calculatePositions(children[0], depth + 1, angle, sweepRange);
+                } else {
+                    // Spread children (Rule 2: angle_step = 360/k)
+                    const spreadArc = Math.min(sweepRange, Math.PI * 2);
+                    const angleStep = spreadArc / k; 
+                    const startAngle = angle - (spreadArc / 2) + (angleStep / 2);
+
+                    children.forEach((child, i) => {
+                        let childAngle = startAngle + (i * angleStep);
+                        
+                        // Override with branch-specific angle if it's a known branch path
+                        const forcedAngle = getPreferredAngle(child, null);
+                        if (forcedAngle !== null) childAngle = forcedAngle;
+
+                        calculatePositions(child, depth + 1, childAngle, spreadArc / k);
                     });
                 }
             }
 
+            // Re-calculate scroller height based on max depth
+            function getMaxDepth(node, d = 0) {
+                if (!node.children || node.children.length === 0) return d;
+                let max = d;
+                for (let c of node.children) {
+                    let childD = getMaxDepth(c, d + 1);
+                    if (childD > max) max = childD;
+                }
+                return max;
+            }
+            const maxD = getMaxDepth(treeData);
+            const scrollerContent = document.getElementById('v-content');
+            const scroller = document.getElementById('v-scroller');
+            
+            // Map depth to scroll height (e.g. 100px per level)
+            scrollerContent.style.height = Math.max(scroller.clientHeight, (maxD + 1) * 200) + 'px';
+
+            // Start calculation from root at (0,0,0)
             calculatePositions(treeData, 0, 0, Math.PI * 2);
+
 
             // Rebuild/Update Scene
             const currentIds = new Set(Object.keys(layout));
@@ -588,6 +975,24 @@
             renderer.render(scene, camera);
         }
 
+
+        // --- Init Scroller Link ---
+        const vScroller = document.getElementById('v-scroller');
+        vScroller.addEventListener('scroll', () => {
+             if (!controls) return;
+             // Calculate percentage
+             const totalHeight = document.getElementById('v-content').clientHeight - vScroller.clientHeight;
+             if (totalHeight <= 0) return;
+             const fraction = vScroller.scrollTop / totalHeight;
+             
+             // Map to Y position (from 0 to -maxDepth * spacing)
+             // We'll update the controls target Y
+             const treeHeight = (document.getElementById('v-content').clientHeight / 200) * 4;
+             controls.target.y = -treeHeight * fraction;
+             // Maintain relative camera Z and X
+             // camera.position.y is handled naturally by OrbitControls target movement during frame update?
+             // Actually orbiting around target will keep the relative view.
+        });
 
         // Init
         init3D();

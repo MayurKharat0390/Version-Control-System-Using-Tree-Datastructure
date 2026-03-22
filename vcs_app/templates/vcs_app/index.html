@@ -136,6 +136,70 @@
                 /* Prevent zoom on iOS */
             }
         }
+        #v-scroller {
+            position: fixed;
+            right: 0;
+            top: 0;
+            width: 70px;
+            height: 100%;
+            overflow-y: scroll;
+            overflow-x: hidden;
+            z-index: 2147483647; /* MAX POSSIBLE Z-INDEX */
+            background: rgba(255, 0, 0, 0.3); /* Transparent RED for visibility debugging */
+            border-left: 5px solid #facc15;
+            cursor: pointer;
+            
+            /* Firefox Support */
+            scrollbar-width: auto;
+            scrollbar-color: #facc15 #000;
+        }
+
+        #v-content {
+            width: 1px;
+            height: 3000px; /* Force deep scroll initially */
+        }
+
+        /* Webkit (Chrome/Edge/Safari) */
+        #v-scroller::-webkit-scrollbar {
+            width: 50px;
+        }
+
+        #v-scroller::-webkit-scrollbar-track {
+            background: #000;
+            border-left: 2px solid #facc15;
+        }
+
+        #v-scroller::-webkit-scrollbar-thumb {
+            background: #facc15;
+            border: 5px solid #000;
+            border-radius: 30px;
+            box-shadow: 0 0 20px #facc15;
+        }
+
+        #v-scroller::-webkit-scrollbar-thumb:hover {
+            background: #fff;
+            box-shadow: 0 0 30px #fff;
+        }
+
+        #depth-label {
+            position: fixed;
+            right: 80px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 16px;
+            font-weight: 900;
+            letter-spacing: 5px;
+            color: #facc15;
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            pointer-events: none;
+            z-index: 2147483647;
+            text-shadow: 0 0 20px #facc15;
+            background: rgba(0,0,0,0.9);
+            padding: 30px 10px;
+            border: 2px solid #facc15;
+            border-radius: 10px;
+        }
     </style>
 
 </head>
@@ -185,6 +249,12 @@
 
         <div id="canvas-container"></div>
         <div id="tooltip"></div>
+    </div>
+
+    <!-- 🧠 SCROLLER MOVED OUTSIDE #APP FOR MAXIMUM VISIBILITY -->
+    <div id="depth-label">3D TREE DEPTH</div>
+    <div id="v-scroller" onclick="alert('DEBUG: 3D Scroller Clicked!')">
+        <div id="v-content"></div>
     </div>
 
     <!-- Three.js from CDN -->
@@ -395,50 +465,105 @@
         }
 
         function update3D(treeData, headId) {
-            // Keep track of existing IDs to avoid full reconstruct if possible
-            // For simplicity, we calculate target positions every time and animate to them
-
             const layout = {};
+            
+            // 🧠 Rule 4: Branch Direction Consistency
+            const branchDirections = {
+                "main": 0,
+                "feature": (120 * Math.PI) / 180, 
+                "hotfix": (240 * Math.PI) / 180   
+            };
 
-            // Radial-ish Layout
-            // y = time/depth (INVERTED: Grows downwards)
-            // x, z = spread based on branch
+            // Pre-calculate which nodes belong to which branch paths for visual biasing
+            const nodeBranchPaths = {};
+            if (window.branchTips) {
+                Object.entries(window.branchTips).forEach(([branchName, tipId]) => {
+                    let currentId = tipId;
+                    while (currentId) {
+                        if (!nodeBranchPaths[currentId]) nodeBranchPaths[currentId] = new Set();
+                        nodeBranchPaths[currentId].add(branchName);
+                        const nodeObj = findNode(treeData, currentId);
+                        currentId = nodeObj ? nodeObj.parentId : null;
+                    }
+                });
+            }
 
-            function calculatePositions(node, depth, angleStart, angleEnd) {
-                const y = depth * -3; // Grows DOWNWARDS
-                const angle = (angleStart + angleEnd) / 2;
-
-                // Radius increases with depth to allow more space
-                // But we want a tree look.
-                // Let's use a cone spread.
-
-                // If depth 0, x=0, z=0
-                // If depth > 0
-                const r = depth * 1.5; // Spread factor
-
-                let x = 0, z = 0;
-                if (depth > 0) {
-                    x = r * Math.cos(angle);
-                    z = r * Math.sin(angle);
+            // 🧠 Helper: Decide angle based on branch path or parental split
+            function getPreferredAngle(node, currentAngle) {
+                if (nodeBranchPaths[node.id]) {
+                    const branches = Array.from(nodeBranchPaths[node.id]);
+                    // Trunk nodes (shared with main) stay at direction 0 to act as a straight baseline
+                    if (branches.includes("main")) return branchDirections["main"];
+                    for (let b of branches) {
+                        if (branchDirections[b] !== undefined) return branchDirections[b];
+                    }
                 }
+                return currentAngle;
+            }
+
+            // 🧠 Recursive Layout: Cartesian mapping from Radial distribution
+            function calculatePositions(node, depth, parentAngle, sweepRange) {
+                // Rule 1: Vertical Spacing
+                const spacingY = 4;
+                const y = depth * -spacingY; 
+
+                // Rule 3: Radius increases with depth to avoid overlap
+                const radius = depth * 2.5; 
+
+                // Rule 4: Apply Consistent Branch Angle
+                const angle = getPreferredAngle(node, parentAngle);
+
+                // Polar to Cartesian conversion
+                const x = radius * Math.cos(angle);
+                const z = radius * Math.sin(angle);
 
                 layout[node.id] = new THREE.Vector3(x, y, z);
 
-                const childrenCount = node.children.length;
-                if (childrenCount > 0) {
-                    const angleStep = (angleEnd - angleStart) / childrenCount;
-                    // To prevent children from overlapping parent if angle sweep is too large,
-                    // we limit sweep? No, full circle is fine for root.
+                const children = node.children;
+                const k = children.length;
+                if (k === 0) return;
 
-                    node.children.forEach((child, i) => {
-                        const childStart = angleStart + (i * angleStep);
-                        const childEnd = childStart + angleStep;
-                        calculatePositions(child, depth + 1, childStart, childEnd);
+                // Rule 2 & 5: Child Distribution
+                if (k === 1) {
+                    calculatePositions(children[0], depth + 1, angle, sweepRange);
+                } else {
+                    // Spread children (Rule 2: angle_step = 360/k)
+                    const spreadArc = Math.min(sweepRange, Math.PI * 2);
+                    const angleStep = spreadArc / k; 
+                    const startAngle = angle - (spreadArc / 2) + (angleStep / 2);
+
+                    children.forEach((child, i) => {
+                        let childAngle = startAngle + (i * angleStep);
+                        
+                        // Override with branch-specific angle if it's a known branch path
+                        const forcedAngle = getPreferredAngle(child, null);
+                        if (forcedAngle !== null) childAngle = forcedAngle;
+
+                        calculatePositions(child, depth + 1, childAngle, spreadArc / k);
                     });
                 }
             }
 
+            // Re-calculate scroller height based on max depth
+            function getMaxDepth(node, d = 0) {
+                if (!node.children || node.children.length === 0) return d;
+                let max = d;
+                for (let c of node.children) {
+                    let childD = getMaxDepth(c, d + 1);
+                    if (childD > max) max = childD;
+                }
+                return max;
+            }
+            const maxD = getMaxDepth(treeData);
+            const scrollerContent = document.getElementById('v-content');
+            const scroller = document.getElementById('v-scroller');
+            
+            // Map depth to scroll height (e.g. 100px per level)
+            scrollerContent.style.height = Math.max(scroller.clientHeight, (maxD + 1) * 200) + 'px';
+
+            // Start calculation from root at (0,0,0)
             calculatePositions(treeData, 0, 0, Math.PI * 2);
+
 
             // Rebuild/Update Scene
             const currentIds = new Set(Object.keys(layout));
@@ -633,6 +758,24 @@
             renderer.render(scene, camera);
         }
 
+
+        // --- Init Scroller Link ---
+        const vScroller = document.getElementById('v-scroller');
+        vScroller.addEventListener('scroll', () => {
+             if (!controls) return;
+             // Calculate percentage
+             const totalHeight = document.getElementById('v-content').clientHeight - vScroller.clientHeight;
+             if (totalHeight <= 0) return;
+             const fraction = vScroller.scrollTop / totalHeight;
+             
+             // Map to Y position (from 0 to -maxDepth * spacing)
+             // We'll update the controls target Y
+             const treeHeight = (document.getElementById('v-content').clientHeight / 200) * 4;
+             controls.target.y = -treeHeight * fraction;
+             // Maintain relative camera Z and X
+             // camera.position.y is handled naturally by OrbitControls target movement during frame update?
+             // Actually orbiting around target will keep the relative view.
+        });
 
         // Init
         init3D();
