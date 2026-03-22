@@ -1,5 +1,9 @@
 import datetime
+import json
+import os
 from collections import deque
+
+STORAGE_FILE = "vcs_registry.json"
 
 # =============================================================================
 # DATA STRUCTURE: General Tree Node (Commit)
@@ -62,6 +66,8 @@ class Repository:
         Time Complexity: O(1) pointer resets
         Clears all node references and starts the Tree from a fresh root.
         """
+        if os.path.exists(STORAGE_FILE):
+            os.remove(STORAGE_FILE)
         self._initialize()
 
     def __new__(cls):
@@ -88,7 +94,63 @@ class Repository:
         self.commits_map = {"root": self.root}
         self.commit_counter = 0
 
-    def get_new_id(self):
+        # Load from disk if exists
+        self.load_state()
+
+    def save_state(self):
+        """
+        ADS OPERATION: Serialization
+        Purpose: Persistence of Tree structure across restarts.
+        """
+        def serialize(node):
+            return {
+                "id": node.id,
+                "message": node.message,
+                "timestamp": node.timestamp,
+                "children": [serialize(c) for c in node.children]
+            }
+
+        data = {
+            "root": serialize(self.root),
+            "head_id": self.head.id,
+            "current_branch": self.current_branch,
+            "branches": {name: node.id for name, node in self.branches.items()},
+            "commit_counter": self.commit_counter
+        }
+        with open(STORAGE_FILE, "w") as f:
+            json.dump(data, f, indent=4)
+
+    def load_state(self):
+        """
+        ADS OPERATION: Deserialization
+        Purpose: Reconstruction of Tree pointers from JSON.
+        """
+        if not os.path.exists(STORAGE_FILE): return
+
+        try:
+            with open(STORAGE_FILE, "r") as f:
+                data = json.load(f)
+            
+            # Reset current in-memory state
+            self.commits_map = {}
+            
+            def deserialize(node_data, parent=None):
+                commit = Commit(node_data["message"], node_data["id"])
+                commit.timestamp = node_data["timestamp"]
+                commit.parent = parent
+                self.commits_map[commit.id] = commit
+                for child_data in node_data["children"]:
+                    child = deserialize(child_data, commit)
+                    commit.children.append(child)
+                return commit
+
+            self.root = deserialize(data["root"])
+            self.commit_counter = data["commit_counter"]
+            self.current_branch = data["current_branch"]
+            self.head = self.commits_map.get(data["head_id"], self.root)
+            self.branches = {name: self.commits_map[cid] for name, cid in data["branches"].items()}
+        except Exception as e:
+            print(f"LOAD ERROR: {e}. Starting fresh.")
         """O(1) Utility: Generates sequential ID for new nodes."""
         self.commit_counter += 1
         return f"c{self.commit_counter}"
@@ -128,6 +190,9 @@ class Repository:
         # Step 6: Maintain lookup map for O(1) access
         self.commits_map[new_id] = new_node
         
+        # PERSIST STATE
+        self.save_state()
+        
         return new_node
 
     def create_branch(self, branch_name):
@@ -143,6 +208,7 @@ class Repository:
         
         # Assign new branch name to the current HEAD reference (Pointer)
         self.branches[branch_name] = self.head
+        self.save_state()
         return True, "Branch created successfully"
 
     def checkout(self, branch_name):
@@ -159,6 +225,7 @@ class Repository:
         # Time Complexity: O(1)
         self.head = self.branches[branch_name]
         self.current_branch = branch_name
+        self.save_state()
         return True, f"Switched pointer to branch: {branch_name}"
 
     def get_log(self):
