@@ -1,8 +1,19 @@
 # 🌲 Advanced Tree-Based Version Control System (3D VCS)
 
-![VCS Main UI](media/vcs_main.png)
+![VCS UI](media/vcs_main.png)
 
 A high-fidelity Version Control System (VCS) built to demonstrate **Advanced Data Structure (ADS)** principles through a **General Rooted Tree**. Unlike Git's Directed Acyclic Graph (DAG), this system enforces a strict tree structure, making it a perfect pedagogical tool for visualizing hierarchical relationships, pointer management, and recursive algorithms.
+
+---
+
+## 🛠️ Technology Stack
+
+![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54)
+![Django](https://img.shields.io/badge/django-%23092e20.svg?style=for-the-badge&logo=django&logoColor=white)
+![Three.js](https://img.shields.io/badge/threejs-black?style=for-the-badge&logo=three.js&logoColor=white)
+![JavaScript](https://img.shields.io/badge/javascript-%23323330.svg?style=for-the-badge&logo=javascript&logoColor=%23F7DF1E)
+![HTML5](https://img.shields.io/badge/html5-%23E34F26.svg?style=for-the-badge&logo=html5&logoColor=white)
+![CSS3](https://img.shields.io/badge/css3-%231572B6.svg?style=for-the-badge&logo=css3&logoColor=white)
 
 ---
 
@@ -28,15 +39,7 @@ A high-fidelity Version Control System (VCS) built to demonstrate **Advanced Dat
 
 ---
 
-![VCS Secondary View](media/vcs_side.png)
-
-## 🛠️ Technology Stack
-
-- **Engine**: Python (Django Backend) - Strictly pointer-based node references.
-- **Frontend**: High-performance JavaScript + Three.js + Vanilla CSS.
-- **Typography**: Orbitron (Sci-Fi Headers), Space Mono (Console Elements), and Exo 2 (UI).
-
----
+![VCS View](media/vcs_side.png)
 
 ## 📦 Setup & Initialization
 
