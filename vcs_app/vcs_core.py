@@ -151,6 +151,7 @@ class Repository:
             self.branches = {name: self.commits_map[cid] for name, cid in data["branches"].items()}
         except Exception as e:
             print(f"LOAD ERROR: {e}. Starting fresh.")
+    def get_new_id(self):
         """O(1) Utility: Generates sequential ID for new nodes."""
         self.commit_counter += 1
         return f"c{self.commit_counter}"
@@ -294,57 +295,74 @@ class Repository:
         }
 
     # =========================================================================
-    # ADVANCED TREE OPERATIONS (DFS, BFS, LCA)
+    # CORE ADS ALGORITHMS (DFS, BFS, LCA, SEARCH)
+    # Refactored for Classic Logic (as per C++ Standard implementation)
     # =========================================================================
 
     def get_full_history_dfs(self):
         """
-        ADS OPERATION: Depth-First Search (DFS)
-        Purpose: System-wide full history exploration.
-        Time Complexity: O(N)
+        ADS ALGORITHM: DEPTH-FIRST SEARCH (DFS) - CLASSIC RECURSION
+        Logic: Visit Current (Pre-order) -> Recurse into all Children
+        Equivalent to: std::vector<Node*> search(Node* root) in C++
         """
         result = []
-        def dfs(node):
-            # Process current node (Pre-order)
-            result.append(node.get_details())
-            # Recursively visit all children
-            for child in node.children:
-                dfs(child)
         
-        dfs(self.root)
+        def traverse(node):
+            if node is None:
+                return
+            
+            # Step 1: 'Visit' the node (Pre-order logic)
+            result.append(node.get_details())
+            
+            # Step 2: Recursively call DFS for each 'child' pointer
+            for child in node.children:
+                traverse(child)
+        
+        traverse(self.root)
         return result
 
     def get_level_view_bfs(self):
         """
-        ADS OPERATION: Breadth-First Search (BFS)
-        Purpose: Analyze structural density level-by-level.
-        Time Complexity: O(N)
+        ADS ALGORITHM: BREADTH-FIRST SEARCH (BFS) - CLASSIC QUEUE Logic
+        Logic: Enqueue Root -> While Queue not empty: Dequeue, Visit, Enqueue Children
+        Equivalent to: std::queue<Node*> q in C++
         """
         levels = {}
-        # Explicit Queue-based traversal
+        if not self.root:
+            return levels
+            
+        # Step 1: Initialize Queue with Root and Depth indicator
         queue = deque([(self.root, 0)])
         
         while queue:
-            node, d = queue.popleft()
-            if d not in levels:
-                levels[d] = []
-            levels[d].append(node.get_details())
+            # Step 2: Extract current node from front (O(1))
+            current_node, depth = queue.popleft()
             
-            # Add all children to queue for next level processing
-            for child in node.children:
-                queue.append((child, d + 1))
+            # Step 3: 'Visit' the node and map it to its level
+            if depth not in levels:
+                levels[depth] = []
+            levels[depth].append(current_node.get_details())
+            
+            # Step 4: Enqueue all children for processing in next level
+            for child in current_node.children:
+                queue.append((child, depth + 1))
         
         return levels
 
     def find_commit_dfs(self, query):
         """
-        ADS OPERATION: Search via DFS
-        Purpose: Locate a specific commit in global history.
+        ADS ALGORITHM: TREE SEARCH (DFS-BASED)
+        Logic: Search entire tree recursively for a matching value.
         """
         def search(node):
-            # Check ID or Message match
+            if not node:
+                return None
+            
+            # Step 1: Check match (ID or Message)
             if node.id == query or query.lower() in node.message.lower():
                 return node
+                
+            # Step 2: Recurse through all subtrees
             for child in node.children:
                 found = search(child)
                 if found:
@@ -355,9 +373,8 @@ class Repository:
 
     def get_lca(self, id1, id2):
         """
-        ADS OPERATION: Lowest Common Ancestor (LCA)
-        Purpose: Identify divergence point of two branches.
-        Method: Path Reconstruction (Pointer-based)
+        ADS ALGORITHM: LOWEST COMMON ANCESTOR (LCA)
+        Logic: Standard Path Intersection (Constant Pointer Hopping)
         Time Complexity: O(D) where D is depth
         """
         node1 = self.commits_map.get(id1)
@@ -365,68 +382,77 @@ class Repository:
         if not node1 or not node2:
             return None
         
-        # Step 1: Trace path from node1 to Root and store in HashSet
+        # Step 1: Record Path 1 from Node to Root
         path1 = set()
         curr = node1
         while curr:
             path1.add(curr.id)
-            curr = curr.parent
+            curr = curr.parent # Pointer hopping to parent
             
-        # Step 2: Trace path from node2 to Root until an ID exists in path1
+        # Step 2: Traverse from Node 2 to Root and find 1st intersection
         curr = node2
         while curr:
             if curr.id in path1:
-                return curr.get_details()
+                return curr.get_details() # Found common ancestor
             curr = curr.parent
+            
         return None
 
     def get_subtree(self, commit_id):
         """
-        ADS OPERATION: Subtree Extraction (DFS)
-        Purpose: Visualize descendants of a specific commit.
+        ADS ALGORITHM: SUBTREE EXTRACTION (DFS)
+        Logic: Recursively collect all descendant IDs.
         """
-        start_node = self.commits_map.get(commit_id)
-        if not start_node: return []
+        start = self.commits_map.get(commit_id)
+        if not start: return []
         
-        subtree = []
-        def dfs(node):
-            subtree.append(node.id)
+        subtree_ids = []
+        def collect(node):
+            subtree_ids.append(node.id)
             for child in node.children:
-                dfs(child)
-        dfs(start_node)
-        return subtree
+                collect(child)
+        
+        collect(start)
+        return subtree_ids
 
     def get_tree_height(self):
         """
-        ADS OPERATION: Height Calculation (Recursive)
-        Time Complexity: O(N)
+        ADS ALGORITHM: HEIGHT CALCULATION (RECURSIVE)
+        Logic: Height = 1 + max(Height of Children)
+        Equivalent to: return 1 + max_child_height
         """
-        def calculate_height(node):
+        def calculate(node):
             if not node.children:
-                return 0
-            # Height = 1 + max height of subtrees
-            return 1 + max(calculate_height(child) for child in node.children)
+                return 0 # Leaf node height is 0
             
-        return calculate_height(self.root)
+            max_child = 0
+            for child in node.children:
+                h = calculate(child)
+                if h > max_child:
+                    max_child = h
+            return 1 + max_child
+            
+        return calculate(self.root)
 
     def get_node_metrics(self, commit_id):
         """
-        ADS OPERATION: Node Metrics (Depth)
+        ADS ALGORITHM: NODE ANALYTICS (DEPTH & LINEAGE)
+        Logic: Iterative parent traversal to measure distance from root.
         """
         node = self.commits_map.get(commit_id)
         if not node: return None
         
-        # Calculate Depth (Path to Root)
         depth = 0
+        lineage = []
         curr = node
-        path = []
+        
         while curr:
-            path.append(curr.id)
+            lineage.append(curr.id)
             if curr.parent:
                 depth += 1
             curr = curr.parent
             
         return {
             "depth": depth,
-            "path_to_root": path
+            "path_to_root": lineage
         }

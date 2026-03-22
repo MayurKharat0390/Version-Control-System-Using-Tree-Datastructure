@@ -1,60 +1,77 @@
-# Tree-Based Version Control System with 3D Visualization
+# 🌲 Advanced Tree-Based Version Control System (3D VCS)
 
-A simplified Version Control System (VCS) built to demonstrate **Advanced Data Structure** concepts, specifically the **General Rooted Tree**. unlike Git which uses a Directed Acyclic Graph (DAG), this system enforces a strict tree structure where every commit has exactly one parent (except the root).
+![VCS Main UI](media/vcs_main.png)
 
-## 🚀 Key Features
+A high-fidelity Version Control System (VCS) built to demonstrate **Advanced Data Structure (ADS)** principles through a **General Rooted Tree**. Unlike Git's Directed Acyclic Graph (DAG), this system enforces a strict tree structure, making it a perfect pedagogical tool for visualizing hierarchical relationships, pointer management, and recursive algorithms.
 
-*   **Strict Tree Structure**: maintained manually using pure Python classes (`Commit`, `Repository`).
-*   **Core VCS Operations**:
-    *   **Commit**: O(1) time complexity. Adds a child to the current HEAD.
-    *   **Branch Creation**: O(1) time complexity. Maps a name to a commit pointer.
-    *   **Checkout**: O(1) time complexity. Swaps the HEAD pointer.
-    *   **Log**: O(N) traversal from HEAD to Root.
-*   **Interactive 3D Visualization**:
-    *   Built with **Three.js**.
-    *   **Cyber/Tech Theme**: Deep blue background, floating data particles, and a perspective grid.
-    *   **Visual Elements**: Commits are represented as cubic data blocks growing downwards.
-    *   **Real-time Updates**: The tree updates dynamically as you commit and branch.
+---
+
+## 💎 Features & "Wow" Factors
+
+### 1. **Interactive 3D "Cyber" UI**
+- **Glassmorphism**: A stunning semi-transparent interface with high-intensity backdrop blur.
+- **Three.js Engine**: A fully navigable 3D workspace where commits are physical data-blocks growing in a 3D coordinate system.
+- **Birds-Eye View (Minimap)**: A secondary orthographic camera pass in the top-right corner for spatial awareness.
+- **Dynamic Highlights**: Path-to-Root tracing and DFS-based subtree highlighting on node selection.
+
+### 2. **Advanced Tree Algorithms (ADS)**
+- **Depth-First Search (DFS)**: Navigates the entire global history of the repository across all branches.
+- **Breadth-First Search (BFS)**: Analyzes the structural density level-by-layer, visualizing the growth of the repository's breadth.
+- **Lowest Common Ancestor (LCA)**: A core VCS algorithm implemented to identify the exact point where two branches diverged.
+- **Time Complexity**: 
+    - **O(1)** for insertion (Commit), branching, and pointer swaps (Checkout).
+    - **O(D)** for ancestor traversal and metrics (where D is tree depth).
+
+### 3. **Persistent VCS Architecture**
+- **JSON Registry**: The entire VCS state—including trees, branches, and the HEAD pointer—is saved to `vcs_registry.json`.
+- **Stateless/Stateful Recovery**: Restart the server at any time; your work remains 100% intact.
+
+---
+
+![VCS Secondary View](media/vcs_side.png)
 
 ## 🛠️ Technology Stack
 
-*   **Backend**: Django (Python) - Handles API logic and tree data structure.
-*   **Frontend**: HTML5, JavaScript, Three.js - Handles the interactive 3D rendering.
-*   **Data Structure**: Custom Python `Commit` nodes (No database hierarchy libraries used).
+- **Engine**: Python (Django Backend) - Strictly pointer-based node references.
+- **Frontend**: High-performance JavaScript + Three.js + Vanilla CSS.
+- **Typography**: Orbitron (Sci-Fi Headers), Space Mono (Console Elements), and Exo 2 (UI).
 
-## 📦 Setup & Run
+---
 
-1.  **Clone the repository**:
+## 📦 Setup & Initialization
+
+1.  **Clone the Mission**:
     ```bash
     git clone https://github.com/MayurKharat0390/Version-Control-System-Using-Tree-Datastructure.git
     cd Version-Control-System-Using-Tree-Datastructure
     ```
 
-2.  **Install Django**:
+2.  **Initialize Environment**:
     ```bash
     pip install django
-    ```
-
-3.  **Run Migrations**:
-    ```bash
     python manage.py migrate
     ```
 
-4.  **Start the Server**:
+3.  **Launch the System**:
     ```bash
     python manage.py runserver
     ```
+    Access the terminal via: `http://127.0.0.1:8000/vcs/`
 
-5.  **View the App**:
-    Open your browser and navigate to: `http://127.0.0.1:8000/vcs/`
+---
 
-## 🎮 How to Use
+## 🎮 Operational Guide
 
-1.  **Commit**: Enter a message in the "Controls" panel and click **Commit**. Watch a new block appear connected to the current one.
-2.  **Branch**: Enter a name (e.g., `feature-xyz`) and click **Create Branch**. A colored marker will appear on the current node.
-3.  **Checkout**: Select a branch from the dropdown and click **Checkout**. Any new commits will now branch off from that point, creating a new subtree.
-4.  **Explore**: Click and drag to rotate the 3D view. Scroll to zoom in/out. Hover over nodes to see details.
+1.  **Commit**: Enter a tactical message. A new node is generated as a child of the current `HEAD`.
+2.  **Branch**: Fork the timeline. This creates a new pointer to the current commit in the `Repository` hashmap.
+3.  **LCA Analysis**: Click on two different nodes to find their common ancestor (the divergence point).
+4.  **Full Search**: Use the **DFS Search Bar** to locate any commit by ID or message instantly across the entire tree.
 
-## 🧠 Academic Context
+---
 
-This project serves as a practical implementation of **General Trees**. By simplifying the complex DAG structure of real-world VCS (like Git) into a strict Tree, we can clearly visualize parent-child relationships, subtrees, and the efficiency of pointer-based operations in a hierarchical data structure.
+## 🧠 Academic Significance: Tree vs. DAG
+
+This project models version control strictly as a **General rooted tree**. By removing the complexity of "merges" (which transform a tree into a DAG), we provide a clear, pure environment for students and engineers to master **Recursive Traversal**, **Pointer Switching**, and **Hierarchical Data Integrity**.
+
+---
+**Developed with 💙 using Python & Three.js**
