@@ -117,8 +117,11 @@ class Repository:
             "branches": {name: node.id for name, node in self.branches.items()},
             "commit_counter": self.commit_counter
         }
-        with open(STORAGE_FILE, "w") as f:
-            json.dump(data, f, indent=4)
+        try:
+            with open(STORAGE_FILE, "w") as f:
+                json.dump(data, f, indent=4)
+        except (IOError, OSError) as e:
+            print(f"STORAGE ERROR (expected on Vercel/read-only): {e}")
 
     def load_state(self):
         """
