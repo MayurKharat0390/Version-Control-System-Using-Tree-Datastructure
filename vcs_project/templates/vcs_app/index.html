@@ -25,13 +25,40 @@
 
         #sidebar {
             width: 320px;
-            padding: 20px;
-            background: rgba(15, 23, 42, 0.5); /* TRUE GLASS */
+            padding: 0px; /* Changed: padding handled by internal containers */
+            background: rgba(15, 23, 42, 0.7); /* TRUE GLASS */
             backdrop-filter: blur(25px) saturate(180%);
-            z-index: 10;
-            overflow-y: auto;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
             border-right: 1px solid rgba(56, 189, 248, 0.3);
             box-shadow: 10px 0 30px rgba(0,0,0,0.5);
+        }
+
+        .sidebar-header {
+            padding: 20px 20px 0 20px;
+            background: rgba(15, 23, 42, 0.9);
+            border-bottom: 1px solid rgba(56, 189, 248, 0.2);
+            position: sticky;
+            top: 0;
+            z-index: 20;
+        }
+
+        .sidebar-scrollable {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 20px;
+            /* Thin scrollbar for sleekness */
+            scrollbar-width: thin;
+            scrollbar-color: var(--accent) transparent;
+        }
+
+        .sidebar-scrollable::-webkit-scrollbar {
+            width: 4px;
+        }
+        .sidebar-scrollable::-webkit-scrollbar-thumb {
+            background: var(--accent);
+            border-radius: 10px;
         }
 
         #canvas-container {
@@ -345,67 +372,77 @@
 <body>
     <div id="app">
         <div id="sidebar">
-            <div class="panel">
-                <h2>Commit Search (DFS)</h2>
-                <div class="search-container">
-                    <input type="text" id="commit-search" placeholder="Search Message or ID...">
-                    <button onclick="searchCommit()">Search (DFS)</button>
+            <div class="sidebar-header">
+                <h2>VCS Controls</h2>
+                <!-- Warning Banner for Vercel -->
+                <div id="pers-warning" style="display:none; background:rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; padding: 8px; font-size: 10px; border-radius: 4px; margin-bottom: 15px; color: #fecaca;">
+                    ⚠️ <strong>PREVIEW MODE</strong>: Changes will NOT be persisted permanently on Vercel.
                 </div>
             </div>
 
-            <div class="panel">
-                <h2>Controls</h2>
-                <input type="text" id="commit-msg" placeholder="Commit Message">
-                <button onclick="createCommit()">Commit</button>
-
-                <hr style="border-color: #333; margin: 15px 0;">
-
-                <input type="text" id="branch-name" placeholder="New Branch Name">
-                <button onclick="createBranch()">Create Branch</button>
-
-                <hr style="border-color: #333; margin: 15px 0;">
-
-                <select id="branch-select"></select>
-                <button onclick="checkout()">Checkout</button>
-            </div>
-
-
-            <div class="panel">
-                <h2>Branch Legend</h2>
-                <div id="branch-legend" class="branch-legend">
-                    <!-- Dynamic -->
-                </div>
-            </div>
-
-            <div class="panel">
-                <h2>Current State</h2>
-                <div id="status-display">Loading...</div>
-                
-                <div id="analytics-display" class="analysis-box" style="display:none;">
-                    <strong>NODE DETAILS</strong><br>
-                    ID: <span id="analysis-id" class="log-id"></span><br>
-                    Msg: <span id="analysis-msg"></span><br>
-                    Parent: <span id="analysis-parent"></span><br>
-                    Children: <span id="analysis-children"></span><br>
-                    Depth: <span id="analysis-depth"></span><br>
-                    Height: <span id="analysis-height"></span><br>
-                    <div id="analysis-path" style="margin-top:10px; color:#94a3b8; font-size:0.85em; font-style:italic;"></div>
+            <div class="sidebar-scrollable">
+                <div class="panel">
+                    <h2>Commit Search (DFS)</h2>
+                    <div class="search-container">
+                        <input type="text" id="commit-search" placeholder="Search Message or ID...">
+                        <button onclick="searchCommit()">Search (DFS)</button>
+                    </div>
                 </div>
 
-                <div style="display:flex; gap:5px;">
-                    <button id="lca-mode-btn" onclick="toggleLCAMode()" style="margin-top:10px; background:#4b5563; flex:1;">LCA Divergence</button>
-                    <button onclick="runBFSReport()" style="margin-top:10px; background:#4b5563; flex:1;">BFS Growth</button>
-                </div>
-            </div>
+                <div class="panel">
+                    <h2>Controls</h2>
+                    <input type="text" id="commit-msg" placeholder="Commit Message">
+                    <button onclick="createCommit()" style="background:var(--accent); color:#000; font-weight:bold;">COMMIT</button>
 
-            <div class="panel">
-                <h2>VCS History</h2>
-                <div class="toggle-container">
-                    <button id="mode-linear" class="toggle-btn active" onclick="setHistoryMode('linear')">LINEAR (Branch)</button>
-                    <button id="mode-full" class="toggle-btn" onclick="setHistoryMode('full')">FULL DFS (Repo)</button>
+                    <hr style="border-color: rgba(255,255,255,0.1); margin: 15px 0;">
+
+                    <input type="text" id="branch-name" placeholder="New Branch Name">
+                    <button onclick="createBranch()">Create Branch</button>
+
+                    <hr style="border-color: rgba(255,255,255,0.1); margin: 15px 0;">
+
+                    <select id="branch-select"></select>
+                    <button onclick="checkout()">Checkout</button>
                 </div>
-                <div id="log-container">Loading...</div>
-                <button class="danger" onclick="eraseTree()">Erase All Tree Nodes</button>
+
+
+                <div class="panel">
+                    <h2>Branch Legend</h2>
+                    <div id="branch-legend" class="branch-legend">
+                        <!-- Dynamic -->
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <h2>Current State</h2>
+                    <div id="status-display">Loading...</div>
+                    
+                    <div id="analytics-display" class="analysis-box" style="display:none;">
+                        <strong>NODE DETAILS</strong><br>
+                        ID: <span id="analysis-id" class="log-id"></span><br>
+                        Msg: <span id="analysis-msg"></span><br>
+                        Parent: <span id="analysis-parent"></span><br>
+                        Children: <span id="analysis-children"></span><br>
+                        Depth: <span id="analysis-depth"></span><br>
+                        Height: <span id="analysis-height"></span><br>
+                        <div id="analysis-path" style="margin-top:10px; color:#94a3b8; font-size:0.85em; font-style:italic;"></div>
+                    </div>
+
+                    <div style="display:flex; gap:5px;">
+                        <button id="lca-mode-btn" onclick="toggleLCAMode()" style="margin-top:10px; background:#4b5563; flex:1;">LCA Divergence</button>
+                        <button onclick="runBFSReport()" style="margin-top:10px; background:#4b5563; flex:1;">BFS Growth</button>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <h2>VCS History</h2>
+                    <div class="toggle-container">
+                        <button id="mode-linear" class="toggle-btn active" onclick="setHistoryMode('linear')">LINEAR (Branch)</button>
+                        <button id="mode-full" class="toggle-btn" onclick="setHistoryMode('full')">FULL DFS (Repo)</button>
+                    </div>
+                    <div id="log-container">Loading...</div>
+                    <button class="danger" onclick="eraseTree()">Erase All Tree Nodes</button>
+                </div>
             </div>
         </div>
 
@@ -1169,6 +1206,11 @@
         init3D();
         fetchStatus(); // Initial Load
         fetchLog();
+
+        // Detect Vercel
+        if (window.location.hostname.includes('vercel.app')) {
+            document.getElementById('pers-warning').style.display = 'block';
+        }
     </script>
 </body>
 
