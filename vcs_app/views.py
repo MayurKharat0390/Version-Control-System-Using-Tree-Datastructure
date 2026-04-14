@@ -124,11 +124,68 @@ def get_node_analytics(request, commit_id):
 def get_tree_data(request):
     tree = repo.get_tree_data()
     status = repo.get_status()
-    # Flatten tree or send as is? 
-    # For D3/Three.js, hierarchical JSON is often good.
-    # The prompt asked for: { "id": "c1", "children": [...] }
-    # My repo.get_tree_data() returns exactly that.
+    return JsonResponse({'tree': tree, 'status': status})
+
+
+# =============================================================================
+# GRAPH API ENDPOINTS (new)
+# =============================================================================
+
+@csrf_exempt
+def merge_branches(request):
+    """GRAPH OPERATION: Create a merge commit with 2 parents (DAG cross-edge)"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            source = data.get('source_branch')
+            target = data.get('target_branch')
+            if not source or not target:
+                return JsonResponse({'status': 'error', 'message': 'source_branch and target_branch required'}, status=400)
+            success, result = repo.merge_branches(source, target)
+            if success:
+                return JsonResponse({'status': 'success', 'result': result})
+            return JsonResponse({'status': 'error', 'message': result}, status=400)
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+    return JsonResponse({'status': 'error', 'message': 'Invalid method'}, status=405)
+
+
+def get_graph_data(request):
+    """Returns full DAG adjacency list for graph (D3) visualization"""
+    return JsonResponse(repo.get_graph_data())
+
+
+@csrf_exempt
+def get_shortest_path(request):
+    """GRAPH ALGORITHM: BFS Shortest Path between two commit IDs"""
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        id1 = data.get('id1')
+        id2 = data.get('id2')
+        path = repo.get_shortest_path(id1, id2)
+        if path:
+            return JsonResponse({'status': 'success', 'path': path, 'length': len(path) - 1})
+        return JsonResponse({'status': 'error', 'message': 'No path found between the given commits'}, status=404)
+    return JsonResponse({'status': 'error', 'message': 'Invalid method'}, status=405)
+
+
+def get_topo_sort(request):
+    """GRAPH ALGORITHM: Topological ordering via Kahn's Algorithm"""
+    order = repo.get_topo_sort()
+    return JsonResponse({'status': 'success', 'order': order})
+
+
+def get_reachable(request, commit_id):
+    """GRAPH ALGORITHM: DFS Reachability — all commits reachable from commit_id"""
+    reachable = repo.get_reachable_from(commit_id)
+    return JsonResponse({'status': 'success', 'reachable': reachable, 'count': len(reachable)})
+
+
+def check_dag(request):
+    """Validates the commit graph has no cycles (should always be True in a healthy VCS)"""
+    is_valid = repo.check_is_dag()
     return JsonResponse({
-        'tree': tree,
-        'status': status
+        'status': 'success',
+        'is_dag': is_valid,
+        'message': '\u2705 Valid DAG \u2014 No cycles detected' if is_valid else '\u274c Cycle detected!'
     })

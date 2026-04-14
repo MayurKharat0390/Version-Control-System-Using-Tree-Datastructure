@@ -14,4 +14,11 @@ urlpatterns = [
     path('node-analytics/<str:commit_id>', views.get_node_analytics),
     path('tree-data', views.get_tree_data),
     path('reset', views.reset_repo),
+    # Graph endpoints
+    path('merge', views.merge_branches),
+    path('graph-data', views.get_graph_data),
+    path('shortest-path', views.get_shortest_path),
+    path('topo-sort', views.get_topo_sort),
+    path('reachable/<str:commit_id>', views.get_reachable),
+    path('check-dag', views.check_dag),
 ]

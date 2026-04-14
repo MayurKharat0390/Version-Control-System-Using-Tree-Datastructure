@@ -365,6 +365,82 @@
             text-shadow: 0 0 5px #38bdf8;
             white-space: nowrap;
         }
+
+        /* ==========================================================
+           GRAPH VIEW ADDITIONS
+           ========================================================== */
+
+        #view-toggle-bar {
+            position: absolute;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 500;
+            display: flex;
+            gap: 6px;
+            background: rgba(15, 23, 42, 0.93);
+            padding: 6px 10px;
+            border-radius: 20px;
+            border: 1px solid rgba(56, 189, 248, 0.35);
+            backdrop-filter: blur(16px);
+            box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+        }
+
+        .view-btn {
+            width: auto !important;
+            margin: 0 !important;
+            padding: 7px 20px !important;
+            border-radius: 14px !important;
+            font-size: 0.72em !important;
+            font-family: var(--header-font) !important;
+            letter-spacing: 1px !important;
+            background: transparent !important;
+            border: 1px solid transparent !important;
+            color: #64748b !important;
+            cursor: pointer;
+            transition: all 0.25s ease;
+        }
+
+        .view-btn:hover { color: #e2e8f0 !important; background: rgba(56,189,248,0.1) !important; }
+
+        .view-btn.active-view {
+            background: linear-gradient(135deg, #0284c7, #6366f1) !important;
+            color: #fff !important;
+            box-shadow: 0 0 15px rgba(56,189,248,0.35);
+        }
+
+        #graph-canvas {
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(ellipse at center, #0c1628 0%, #0f172a 100%);
+            display: none;
+        }
+
+        #graph-canvas svg { width: 100%; height: 100%; }
+
+        .graph-algo-section { margin-bottom: 5px; }
+
+        .graph-algo-label {
+            font-size: 0.65em;
+            color: #8b5cf6;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            font-family: var(--header-font);
+        }
+
+        .result-box {
+            font-size: 0.75em;
+            margin-top: 8px;
+            padding: 10px;
+            background: rgba(139,92,246,0.08);
+            border: 1px solid rgba(139,92,246,0.25);
+            border-radius: 8px;
+            line-height: 1.7;
+            word-break: break-word;
+        }
+
+        .result-box code { color: #38bdf8; font-family: var(--mono-font); }
     </style>
 
 </head>
@@ -443,10 +519,67 @@
                     <div id="log-container">Loading...</div>
                     <button class="danger" onclick="eraseTree()">Erase All Tree Nodes</button>
                 </div>
+
+                <!-- ================================================
+                     GRAPH OPERATIONS PANEL
+                     ================================================ -->
+                <div class="panel" id="graph-ops-panel">
+                    <h2>&#9889; Graph Operations (DAG)</h2>
+
+                    <!-- Merge -->
+                    <div class="graph-algo-section">
+                        <div class="graph-algo-label">&#128256; Merge Branches</div>
+                        <select id="merge-source"><option value="">Source Branch...</option></select>
+                        <select id="merge-target"><option value="">Target Branch...</option></select>
+                        <button onclick="mergeAction()" style="background:linear-gradient(135deg,#7c3aed,#4f46e5);">Merge &#8594; Create DAG Edge</button>
+                        <div id="merge-result" class="result-box" style="display:none;"></div>
+                    </div>
+
+                    <hr style="border-color:rgba(255,255,255,0.08);margin:12px 0;">
+
+                    <!-- Shortest Path -->
+                    <div class="graph-algo-section">
+                        <div class="graph-algo-label">&#128205; Shortest Path (BFS)</div>
+                        <input type="text" id="path-id1" placeholder="From ID (e.g. root)">
+                        <input type="text" id="path-id2" placeholder="To ID (e.g. c3)">
+                        <button onclick="shortestPathAction()" style="background:#1d4ed8;">Find Shortest Path</button>
+                        <div id="path-result" class="result-box" style="display:none;"></div>
+                    </div>
+
+                    <hr style="border-color:rgba(255,255,255,0.08);margin:12px 0;">
+
+                    <!-- Reachability -->
+                    <div class="graph-algo-section">
+                        <div class="graph-algo-label">&#128269; DFS Reachability</div>
+                        <input type="text" id="reach-id" placeholder="From Commit ID...">
+                        <button onclick="reachabilityAction()" style="background:#065f46;">Check Reachable</button>
+                        <div id="reach-result" class="result-box" style="display:none;"></div>
+                    </div>
+
+                    <hr style="border-color:rgba(255,255,255,0.08);margin:12px 0;">
+
+                    <!-- Topo Sort + DAG Check -->
+                    <div class="graph-algo-section">
+                        <div class="graph-algo-label">&#128202; Graph Analysis</div>
+                        <div style="display:flex;gap:5px;">
+                            <button onclick="topoSortAction()" style="background:#92400e;flex:1;">Topo Sort</button>
+                            <button onclick="checkDagAction()" style="background:#1e3a5f;flex:1;">Verify DAG</button>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
 
         <div id="canvas-container">
+            <!-- View Mode Toggle -->
+            <div id="view-toggle-bar">
+                <button id="btn-tree-view" class="view-btn active-view" onclick="setViewMode('tree')">&#127794; 3D Tree</button>
+                <button id="btn-graph-view" class="view-btn" onclick="setViewMode('graph')">&#128375; DAG Graph</button>
+            </div>
+            <!-- D3 Graph Canvas (shown in graph mode) -->
+            <div id="graph-canvas"></div>
+            <!-- Three.js minimap -->
             <div id="minimap">
                 <div class="minimap-label">BIRDS-EYE VIEW</div>
             </div>
@@ -463,6 +596,8 @@
     <!-- Three.js from CDN -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <!-- D3.js for DAG Graph view -->
+    <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
 
     <script>
         // --- 1. API Interaction ---
@@ -633,9 +768,27 @@
             });
             if (!select.value && currentVal && branchNames.includes(currentVal)) select.value = currentVal;
 
+            // Sync Graph merge dropdowns
+            const mergeSource = document.getElementById('merge-source');
+            const mergeTarget = document.getElementById('merge-target');
+            if (mergeSource && mergeTarget) {
+                const srcVal = mergeSource.value, tgtVal = mergeTarget.value;
+                mergeSource.innerHTML = '<option value="">Source Branch...</option>';
+                mergeTarget.innerHTML = '<option value="">Target Branch...</option>';
+                branchNames.forEach(b => {
+                    const o1 = document.createElement('option'); o1.value = b; o1.innerText = b;
+                    if (b === srcVal) o1.selected = true; mergeSource.appendChild(o1);
+                    const o2 = document.createElement('option'); o2.value = b; o2.innerText = b;
+                    if (b === tgtVal) o2.selected = true; mergeTarget.appendChild(o2);
+                });
+            }
+
             // Pass branch info for 3D visualization
             window.branchTips = data.status.branches;
             window.treeHeight = data.status.tree_height;
+
+            // Refresh graph if currently in graph view
+            if (currentView === 'graph') fetchAndRenderGraph();
         }
 
         let lcaSelection = [];
@@ -742,6 +895,11 @@
         }
 
         // --- 2. 3D Visualization ---
+        // ---- Graph View State ----
+        let currentView = 'tree';
+        let graphSimulation = null;
+
+        // ---- Three.js State ----
         let scene, camera, renderer, controls;
         let miniScene, miniCamera, miniRenderer;
         let nodes = {}; // id -> mesh
@@ -1211,6 +1369,356 @@
         if (window.location.hostname.includes('vercel.app')) {
             document.getElementById('pers-warning').style.display = 'block';
         }
+
+        // =====================================================================
+        // GRAPH VIEW: Toggle between Three.js Tree and D3 DAG
+        // =====================================================================
+        function setViewMode(mode) {
+            currentView = mode;
+            const threeCanvas = document.querySelector('#canvas-container canvas');
+            const graphCanvas  = document.getElementById('graph-canvas');
+            const minimapEl   = document.getElementById('minimap');
+            const btnTree  = document.getElementById('btn-tree-view');
+            const btnGraph = document.getElementById('btn-graph-view');
+            if (mode === 'tree') {
+                if (threeCanvas) threeCanvas.style.display = 'block';
+                if (minimapEl)   minimapEl.style.display   = 'block';
+                graphCanvas.style.display = 'none';
+                btnTree.classList.add('active-view');
+                btnGraph.classList.remove('active-view');
+            } else {
+                if (threeCanvas) threeCanvas.style.display = 'none';
+                if (minimapEl)   minimapEl.style.display   = 'none';
+                graphCanvas.style.display = 'block';
+                btnTree.classList.remove('active-view');
+                btnGraph.classList.add('active-view');
+                fetchAndRenderGraph();
+                
+                // Scroll sidebar to Graph Operations
+                const panel = document.getElementById('graph-ops-panel');
+                if (panel) {
+                    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            }
+        }
+
+        async function fetchAndRenderGraph() {
+            const res  = await fetch(`${API_BASE}/graph-data`);
+            const data = await res.json();
+            renderDAG(data);
+        }
+
+        // =====================================================================
+        // D3 DAG RENDERER — Hierarchical (Top-Down) Layout
+        // Eliminates visual false cycles by placing parents strictly ABOVE children.
+        // =====================================================================
+        function renderDAG(data) {
+            const container  = document.getElementById('graph-canvas');
+            const W = container.clientWidth  || 800;
+            const H = container.clientHeight || 600;
+            const nodeDetails = data.node_details || {};
+            const branchTips  = data.branch_tips  || {};
+            const headId      = data.head_id;
+
+            d3.select('#graph-canvas').selectAll('*').remove();
+
+            const svg = d3.select('#graph-canvas').append('svg').attr('width', W).attr('height', H);
+            const g   = svg.append('g');
+            svg.call(d3.zoom().scaleExtent([0.15, 5])
+                .on('zoom', evt => g.attr('transform', evt.transform)));
+
+            // Defs
+            const defs = svg.append('defs');
+            const addMarker = (id, color) => {
+                defs.append('marker').attr('id', id)
+                    .attr('viewBox','-0 -5 10 10').attr('refX',0).attr('refY',0)
+                    .attr('orient','auto').attr('markerWidth',7).attr('markerHeight',7)
+                    .append('path').attr('d','M 0,-5 L 10,0 L 0,5').attr('fill',color);
+            };
+            addMarker('arrow-normal','#38bdf8');
+            addMarker('arrow-merge', '#8b5cf6');
+            addMarker('arrow-path',  '#facc15');
+
+            const flt = defs.append('filter').attr('id','glow');
+            flt.append('feGaussianBlur').attr('stdDeviation',3).attr('result','coloredBlur');
+            const fm = flt.append('feMerge');
+            fm.append('feMergeNode').attr('in','coloredBlur');
+            fm.append('feMergeNode').attr('in','SourceGraphic');
+
+            // Subtle grid
+            for (let x = 0; x < W; x += 60)
+                g.append('line').attr('x1',x).attr('y1',0).attr('x2',x).attr('y2',H)
+                    .attr('stroke','#1e293b').attr('stroke-width',0.5).attr('opacity',0.35);
+            for (let y = 0; y < H; y += 60)
+                g.append('line').attr('x1',0).attr('y1',y).attr('x2',W).attr('y2',y)
+                    .attr('stroke','#1e293b').attr('stroke-width',0.5).attr('opacity',0.35);
+
+            // ----------------------------------------------------------------
+            // HIERARCHICAL LAYOUT ENGINE
+            // Parents always appear above children — no visual false cycles.
+            // ----------------------------------------------------------------
+            const allIds    = data.nodes;
+            const edgeList  = data.edges;  // [{from, to}]
+
+            // Build children/parent maps from edges
+            const childMap  = {};   // parent -> [children]
+            const inDeg     = {};
+            allIds.forEach(id => { childMap[id] = []; inDeg[id] = 0; });
+            edgeList.forEach(e => {
+                if (childMap[e.from]) childMap[e.from].push(e.to);
+                inDeg[e.to] = (inDeg[e.to] || 0) + 1;
+            });
+
+            // Kahn BFS to assign levels (longest path from any root)
+            const level = {};
+            const queue = allIds.filter(id => (inDeg[id] || 0) === 0);
+            queue.forEach(id => { level[id] = 0; });
+            let q = [...queue];
+            while (q.length) {
+                const id = q.shift();
+                (childMap[id] || []).forEach(cid => {
+                    level[cid] = Math.max(level[cid] || 0, level[id] + 1);
+                    inDeg[cid]--;
+                    if (inDeg[cid] <= 0) q.push(cid);
+                });
+            }
+
+            // Group by level
+            const byLevel = {};
+            allIds.forEach(id => {
+                const lv = level[id] || 0;
+                if (!byLevel[lv]) byLevel[lv] = [];
+                byLevel[lv].push(id);
+            });
+
+            const maxLevel  = Math.max(...Object.keys(byLevel).map(Number));
+            const PADDING   = 80;
+            const levelH    = (H - PADDING * 2) / Math.max(maxLevel, 1);
+            const pos       = {};
+
+            Object.entries(byLevel).forEach(([lv, ids]) => {
+                const y    = PADDING + parseInt(lv) * levelH;
+                const step = (W - PADDING * 2) / Math.max(ids.length, 1);
+                ids.forEach((id, i) => {
+                    pos[id] = { x: PADDING + step * i + step / 2, y };
+                });
+            });
+
+            // ----------------------------------------------------------------
+            // Draw edges first (beneath nodes)
+            // ----------------------------------------------------------------
+            const linkData = edgeList.map(e => ({
+                ...e,
+                isMerge: !!(nodeDetails[e.to] && nodeDetails[e.to].is_merge &&
+                             nodeDetails[e.to].mergeParentId === e.from)
+            }));
+
+            g.append('g').selectAll('line').data(linkData).join('line')
+                .attr('x1', d => pos[d.from] ? pos[d.from].x : 0)
+                .attr('y1', d => pos[d.from] ? pos[d.from].y : 0)
+                .attr('x2', d => {
+                    if (!pos[d.to] || !pos[d.from]) return 0;
+                    const dx=pos[d.to].x-pos[d.from].x, dy=pos[d.to].y-pos[d.from].y;
+                    const len=Math.sqrt(dx*dx+dy*dy)||1;
+                    const r=(d.to===headId?19:(nodeDetails[d.to]&&nodeDetails[d.to].is_merge?16:13))+5;
+                    return pos[d.to].x-(dx/len)*r;
+                })
+                .attr('y2', d => {
+                    if (!pos[d.to] || !pos[d.from]) return 0;
+                    const dx=pos[d.to].x-pos[d.from].x, dy=pos[d.to].y-pos[d.from].y;
+                    const len=Math.sqrt(dx*dx+dy*dy)||1;
+                    const r=(d.to===headId?19:(nodeDetails[d.to]&&nodeDetails[d.to].is_merge?16:13))+5;
+                    return pos[d.to].y-(dy/len)*r;
+                })
+                .attr('stroke',         d => d.isMerge ? '#8b5cf6' : '#38bdf8')
+                .attr('stroke-width',   d => d.isMerge ? 2.5 : 1.5)
+                .attr('stroke-opacity', d => d.isMerge ? 0.9 : 0.55)
+                .attr('stroke-dasharray', d => d.isMerge ? '7,3' : 'none')
+                .attr('marker-end',     d => d.isMerge ? 'url(#arrow-merge)' : 'url(#arrow-normal)');
+
+            // ----------------------------------------------------------------
+            // Draw nodes
+            // ----------------------------------------------------------------
+            const nodesList = allIds.map(id => ({
+                id, ...(nodeDetails[id]||{}),
+                branchLabel: Object.keys(branchTips).filter(b => branchTips[b] === id)
+            }));
+
+            const nodeG = g.append('g').selectAll('g').data(nodesList).join('g')
+                .attr('cursor','pointer')
+                .attr('transform', d => `translate(${pos[d.id]?pos[d.id].x:0},${pos[d.id]?pos[d.id].y:0})`);
+
+            // HEAD pulse ring
+            nodeG.filter(d => d.id === headId).append('circle')
+                .attr('r',26).attr('fill','none')
+                .attr('stroke','#f59e0b').attr('stroke-width',2)
+                .attr('stroke-dasharray','4,3').attr('opacity',0.6);
+
+            // Main circle
+            nodeG.append('circle')
+                .attr('r', d => d.id===headId ? 19 : (d.is_merge ? 16 : 13))
+                .attr('fill', d => {
+                    if (d.id===headId) return '#f59e0b';
+                    if (d.is_merge) return '#8b5cf6';
+                    if (d.branchLabel&&d.branchLabel.length>0) return stringToColor(d.branchLabel[0]);
+                    return '#0ea5e9';
+                })
+                .attr('stroke', d => d.id===headId ? '#fef3c7' : 'rgba(255,255,255,0.2)')
+                .attr('stroke-width', d => d.id===headId ? 2.5 : 1)
+                .attr('filter', d => (d.id===headId||d.is_merge) ? 'url(#glow)' : null);
+
+            // Merge diamond
+            nodeG.filter(d => d.is_merge).append('polygon')
+                .attr('points','0,-12 9,0 0,12 -9,0')
+                .attr('fill','none').attr('stroke','#c4b5fd').attr('stroke-width',1.5);
+
+            // ID text
+            nodeG.append('text').attr('text-anchor','middle').attr('dy','0.35em')
+                .attr('font-size','9px').attr('font-family','Space Mono,monospace')
+                .attr('fill','#fff').attr('font-weight','bold').attr('pointer-events','none')
+                .text(d => d.id);
+
+            // Branch label
+            nodeG.filter(d => d.branchLabel&&d.branchLabel.length>0)
+                .append('text').attr('text-anchor','middle')
+                .attr('dy', d => d.id===headId ? -32 : -24)
+                .attr('font-size','8px').attr('font-family','Orbitron,monospace')
+                .attr('fill','#38bdf8').attr('letter-spacing','1px').attr('pointer-events','none')
+                .text(d => d.branchLabel.join(' | '));
+
+            // HEAD label
+            nodeG.filter(d => d.id===headId)
+                .append('text').attr('text-anchor','middle').attr('dy',36)
+                .attr('font-size','8px').attr('font-family','Orbitron,monospace')
+                .attr('fill','#f59e0b').attr('letter-spacing','2px').attr('pointer-events','none')
+                .text('HEAD');
+
+            // Merge label
+            nodeG.filter(d => d.is_merge && d.id !== headId)
+                .append('text').attr('text-anchor','middle').attr('dy',30)
+                .attr('font-size','7px').attr('font-family','Orbitron,monospace')
+                .attr('fill','#8b5cf6').attr('letter-spacing','1px').attr('pointer-events','none')
+                .text('MERGE');
+
+            // Tooltip
+            nodeG.on('mouseover', (evt, d) => {
+                const tt = document.getElementById('tooltip');
+                tt.style.display = 'block';
+                tt.style.left = (evt.pageX + 14) + 'px';
+                tt.style.top  = (evt.pageY + 10) + 'px';
+                const parents = (data.adjacency_list[d.id]||{}).parents || [];
+                tt.innerHTML = `<strong>${d.id}</strong>${d.is_merge ? ' <span style="color:#8b5cf6">&#128256; MERGE</span>' : ''}<br>
+                    ${d.message||''}<br>
+                    <small>Parents: ${parents.length ? parents.join(', ') : 'none (root)'}</small><br>
+                    <small>${d.timestamp ? new Date(d.timestamp).toLocaleTimeString() : ''}</small>`;
+            }).on('mouseout', () => { document.getElementById('tooltip').style.display='none'; });
+
+            // Legend (bottom-right)
+            const legend = svg.append('g').attr('transform',`translate(${W-160},${H-90})`);
+            legend.append('rect').attr('width',155).attr('height',85)
+                .attr('fill','rgba(15,23,42,0.85)').attr('rx',8)
+                .attr('stroke','rgba(56,189,248,0.2)').attr('stroke-width',1);
+            const legendItems = [
+                {color:'#0ea5e9', label:'Regular commit', y:18},
+                {color:'#8b5cf6', label:'Merge commit (2 parents)', y:36},
+                {color:'#f59e0b', label:'HEAD (current commit)', y:54},
+                {color:'#38bdf8', label:'Normal edge', y:72},
+            ];
+            legendItems.forEach(item => {
+                legend.append('circle').attr('cx',14).attr('cy',item.y-4).attr('r',5).attr('fill',item.color);
+                legend.append('text').attr('x',26).attr('y',item.y)
+                    .attr('font-size','9px').attr('fill','#94a3b8').attr('font-family','Space Mono,monospace')
+                    .text(item.label);
+            });
+        }
+
+        // =====================================================================
+        // GRAPH OPERATION HANDLERS
+        // =====================================================================
+        async function mergeAction() {
+            const source = document.getElementById('merge-source').value;
+            const target = document.getElementById('merge-target').value;
+            if (!source || !target) return alert('Select both branches first.');
+            if (source === target) return alert('Cannot merge a branch into itself.');
+
+            const res  = await fetch(`${API_BASE}/merge`, { method:'POST', body:JSON.stringify({source_branch:source, target_branch:target}) });
+            const data = await res.json();
+            const box  = document.getElementById('merge-result');
+            box.style.display = 'block';
+
+            if (data.status === 'success') {
+                const mc = data.result.merge_commit;
+                const lca = data.result.lca;
+                box.innerHTML = `&#10004;&#65039; <strong style="color:#a3e635">Merge Commit: ${mc.id}</strong><br>
+                    <em>${mc.message}</em><br>
+                    <code>Primary parent&nbsp;: ${mc.parentId}</code><br>
+                    <code>Merge parent&nbsp;&nbsp;: ${mc.mergeParentId}</code><br>
+                    ${lca ? '<code>LCA: ' + lca.id + ' &mdash; &ldquo;' + lca.message + '&rdquo;</code>' : ''}`;
+                fetchStatus(); fetchLog();
+                if (currentView === 'graph') fetchAndRenderGraph();
+            } else {
+                box.innerHTML = `&#10060; ${data.message}`;
+            }
+        }
+
+        async function shortestPathAction() {
+            const id1 = document.getElementById('path-id1').value.trim();
+            const id2 = document.getElementById('path-id2').value.trim();
+            if (!id1 || !id2) return alert('Enter both commit IDs.');
+
+            const res  = await fetch(`${API_BASE}/shortest-path`, { method:'POST', body:JSON.stringify({id1, id2}) });
+            const data = await res.json();
+            const box  = document.getElementById('path-result');
+            box.style.display = 'block';
+
+            if (data.status === 'success') {
+                box.innerHTML = `&#128205; <strong>${data.length} hop(s)</strong> from <code>${id1}</code> to <code>${id2}</code><br>
+                    <code>${data.path.join(' &rarr; ')}</code>`;
+                data.path.forEach(id => { if (currentView === 'tree' && nodes[id]) highlightCommit(id); });
+                if (currentView === 'graph') highlightPathInGraph(data.path);
+            } else {
+                box.innerHTML = `&#10060; ${data.message}`;
+            }
+        }
+
+        async function reachabilityAction() {
+            const id  = document.getElementById('reach-id').value.trim();
+            if (!id) return alert('Enter a commit ID.');
+
+            const res  = await fetch(`${API_BASE}/reachable/${id}`);
+            const data = await res.json();
+            const box  = document.getElementById('reach-result');
+            box.style.display = 'block';
+
+            if (data.status === 'success') {
+                box.innerHTML = `&#128269; <strong>${data.count} commits reachable</strong> from <code>${id}</code>:<br>
+                    <code>${data.reachable.join(' &middot; ')}</code>`;
+            } else {
+                box.innerHTML = `&#10060; ${data.message || 'Commit not found.'}`;
+            }
+        }
+
+        async function topoSortAction() {
+            const res  = await fetch(`${API_BASE}/topo-sort`);
+            const data = await res.json();
+            if (data.status === 'success') {
+                const lines = data.order.map((c,i) => `${String(i+1).padStart(2,' ')}. [${c.id}]  ${c.message}`).join('\n');
+                alert(`Topological Sort  \u2014  Kahn\u2019s Algorithm\n\nOrder (parents always before children):\n\n${lines}`);
+            }
+        }
+
+        async function checkDagAction() {
+            const res  = await fetch(`${API_BASE}/check-dag`);
+            const data = await res.json();
+            alert(`DAG Validation\n\n${data.message}\n\nis_dag: ${data.is_dag}`);
+        }
+
+        function highlightPathInGraph(pathIds) {
+            d3.select('#graph-canvas').selectAll('circle')
+                .attr('stroke', function(d) { return d && pathIds.includes(d.id) ? '#facc15' : null; })
+                .attr('stroke-width', function(d) { return d && pathIds.includes(d.id) ? 4 : null; });
+        }
+
     </script>
 </body>
 
